@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simple Calculator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: #eef2f7;
+      font-family: system-ui, sans-serif;
+    }
+
+    .calculator {
+      width: min(320px, 92vw);
+      padding: 20px;
+      border-radius: 16px;
+      background: #1f2937;
+      box-shadow: 0 12px 30px #0002;
+    }
+
+    #display {
+      width: 100%;
+      min-height: 72px;
+      margin-bottom: 14px;
+      padding: 16px;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #111827;
+      color: white;
+      font-size: 2rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    button {
+      min-height: 56px;
+      border: 0;
+      border-radius: 10px;
+      background: #374151;
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #4b5563;
+    }
+
+    button.operator {
+      background: #2563eb;
+    }
+
+    button.operator:hover {
+      background: #1d4ed8;
+    }
+
+    button.action {
+      background: #6b7280;
+    }
+
+    button.equals {
+      grid-column: span 2;
+      background: #16a34a;
+    }
+
+    button.equals:hover {
+      background: #15803d;
+    }
+  </style>
+</head>
+<body>
+  <main class="calculator" aria-label="Calculator">
+    <output id="display" aria-live="polite">0</output>
+
+    <div class="keys">
+      <button class="action" data-action="clear">C</button>
+      <button class="action" data-action="delete">DEL</button>
+      <button class="operator" data-operator="/">÷</button>
+      <button class="operator" data-operator="*">×</button>
+
+      <button data-digit="7">7</button>
+      <button data-digit="8">8</button>
+      <button data-digit="9">9</button>
+      <button class="operator" data-operator="-">−</button>
+
+      <button data-digit="4">4</button>
+      <button data-digit="5">5</button>
+      <button data-digit="6">6</button>
+      <button class="operator" data-operator="+">+</button>
+
+      <button data-digit="1">1</button>
+      <button data-digit="2">2</button>
+      <button data-digit="3">3</button>
+      <button data-digit="0">0</button>
+
+      <button data-action="decimal">.</button>
+      <button class="equals" data-action="equals">=</button>
+    </div>
+  </main>
+
+  <script>
+    const display = document.querySelector("#display");
+    let currentInput = "0";
+    let previousInput = null;
+    let operator = null;
+    let replaceInput = false;
+
+    function updateDisplay() {
+      display.textContent = currentInput;
+    }
+
+    function enterDigit(digit) {
+      if (replaceInput || currentInput === "Error") {
+        currentInput = digit;
+        replaceInput = false;
+      } else {
+        currentInput = currentInput === "0" ? digit : currentInput + digit;
+      }
+      updateDisplay();
+    }
+
+    function enterDecimal() {
+      if (replaceInput || currentInput === "Error") {
+        currentInput = "0.";
+        replaceInput = false;
+      } else if (!currentInput.includes(".")) {
+        currentInput += ".";
+      }
+      updateDisplay();
+    }
+
+    function calculate() {
+      const first = Number(previousInput);
+      const second = Number(currentInput);
+      let result;
+
+      switch (operator) {
+        case "+": result = first + second; break;
+        case "-": result = first - second; break;
+        case "*": result = first * second; break;
+        case "/": result = second === 0 ? NaN : first / second; break;
+        default: return;
+      }
+
+      currentInput = Number.isFinite(result)
+        ? String(Number(result.toPrecision(12)))
+        : "Error";
+
+      previousInput = null;
+      operator = null;
+      replaceInput = true;
+      updateDisplay();
+    }
+
+    function chooseOperator(nextOperator) {
+      if (currentInput === "Error") return;
+
+      if (operator && !replaceInput) {
+        calculate();
+      }
+
+      previousInput = currentInput;
+      operator = nextOperator;
+      replaceInput = true;
+    }
+
+    function clearCalculator() {
+      currentInput = "0";
+      previousInput = null;
+      operator = null;
+      replaceInput = false;
+      updateDisplay();
+    }
+
+    function deleteDigit() {
+      if (replaceInput || currentInput === "Error") {
+        currentInput = "0";
+        replaceInput = false;
+      } else {
+        currentInput = currentInput.length > 1
+          ? currentInput.slice(0, -1)
+          : "0";
+      }
+      updateDisplay();
+    }
+
+    document.querySelector(".keys").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+
+      if (button.dataset.digit !== undefined) {
+        enterDigit(button.dataset.digit);
+      } else if (button.dataset.operator) {
+        chooseOperator(button.dataset.operator);
+      } else {
+        switch (button.dataset.action) {
+          case "decimal": enterDecimal(); break;
+          case "equals": calculate(); break;
+          case "clear": clearCalculator(); break;
+          case "delete": deleteDigit(); break;
+        }
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (/^\d$/.test(event.key)) enterDigit(event.key);
+      else if (event.key === ".") enterDecimal();
+      else if (["+", "-", "*", "/"].includes(event.key)) chooseOperator(event.key);
+      else if (event.key === "Enter" || event.key === "=") calculate();
+      else if (event.key === "Backspace") deleteDigit();
+      else if (event.key === "Escape") clearCalculator();
+    });
+  </script>
+</body>
+</html>
